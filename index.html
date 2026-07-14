@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DIAL-IN — Espresso Extraction Console</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Oswald:wght@400;500;600;700&display=swap');
+
+:root{
+  --bg: #0b0a08;
+  --bg-2: #141210;
+  --panel: #1c1916;
+  --panel-2: #221e19;
+  --steel: #3a3631;
+  --steel-light: #57524a;
+  --brass: #c99a4a;
+  --brass-dim: #8a6d3a;
+  --copper: #b3612f;
+  --cream: #f2e6cf;
+  --text: #ece6da;
+  --dim: #9c9285;
+  --dimmer: #6b6459;
+  --good: #7fae6b;
+  --warn: #d8a13a;
+  --bad: #c1543a;
+  --line: rgba(201,154,74,0.18);
+  font-size: 16px;
+}
+
+*{ box-sizing: border-box; }
+
+html,body{
+  margin:0; padding:0;
+  background:
+    radial-gradient(ellipse at 50% -10%, #201c17 0%, var(--bg) 55%);
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+::selection{ background: var(--brass); color: #1a1712; }
+
+.wrap{
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 36px 20px 80px;
+}
+
+/* ---------- Header ---------- */
+header{
+  display:flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 18px;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+.brand{
+  font-family: 'Oswald', sans-serif;
+  font-weight: 700;
+  font-size: 30px;
+  letter-spacing: 0.12em;
+  color: var(--cream);
+  display:flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.brand small{
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 400;
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  color: var(--dim);
+  text-transform: uppercase;
+}
+.model-tag{
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--dimmer);
+  text-align:right;
+  line-height: 1.7;
+  text-transform: uppercase;
+}
+.model-tag b{ color: var(--brass); font-weight:600; }
+
+/* ---------- Layout ---------- */
+.stage{
+  display: grid;
+  grid-template-columns: 230px 1fr 300px;
+  gap: 22px;
+  align-items: start;
+}
+@media (max-width: 980px){
+  .stage{ grid-template-columns: 1fr; }
+}
+
+.panel{
+  background: linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%);
+  border: 1px solid var(--steel);
+  border-radius: 6px;
+  padding: 18px;
+  position: relative;
+}
+.panel::before{
+  content:'';
+  position:absolute; inset:0;
+  border-radius:6px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), inset 0 -20px 30px rgba(0,0,0,0.25);
+  pointer-events:none;
+}
+.panel-label{
+  font-size: 10.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--dimmer);
+  margin: 0 0 14px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.panel-label::after{
+  content:'';
+  flex:1;
+  height:1px;
+  background: var(--line);
+}
+
+/* ---------- Machine column (center) ---------- */
+.machine-col{ display:flex; flex-direction:column; align-items:center; gap: 14px; }
+.machine-svg-wrap{ width:100%; }
+.status-line{
+  font-size: 11.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--brass);
+  min-height: 16px;
+  text-align:center;
+}
+.status-line.idle{ color: var(--dimmer); }
+
+.pull-btn{
+  font-family:'Oswald', sans-serif;
+  font-weight:600;
+  letter-spacing: 0.14em;
+  font-size: 15px;
+  text-transform: uppercase;
+  color: #1a1712;
+  background: linear-gradient(180deg, #d9ac5f, var(--copper));
+  border: none;
+  border-radius: 4px;
+  padding: 14px 34px;
+  cursor: pointer;
+  box-shadow: 0 3px 0 #7a4a24, 0 6px 14px rgba(0,0,0,0.4);
+  transition: transform .08s ease, box-shadow .08s ease;
+  width: 100%;
+}
+.pull-btn:active{ transform: translateY(3px); box-shadow: 0 0 0 #7a4a24, 0 3px 8px rgba(0,0,0,0.4); }
+.pull-btn:disabled{
+  background: #4a453d;
+  color: #837b6d;
+  cursor: not-allowed;
+  box-shadow: 0 3px 0 #2c2924;
+}
+
+/* ---------- Controls column (left) ---------- */
+.dial-group{ margin-bottom: 22px; }
+.dial-group:last-child{ margin-bottom:0; }
+.dial-head{
+  display:flex; justify-content:space-between; align-items:baseline;
+  margin-bottom: 8px;
+}
+.dial-name{
+  font-size: 11px; letter-spacing:0.1em; text-transform:uppercase; color: var(--dim);
+}
+.dial-value{
+  font-family:'Oswald', sans-serif;
+  font-size: 19px; font-weight:600; color: var(--cream);
+}
+.dial-value span{ font-size: 12px; color: var(--dimmer); font-family:'JetBrains Mono',monospace; font-weight:400; }
+
+input[type=range]{
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 26px;
+  background: transparent;
+  margin: 0;
+}
+input[type=range]::-webkit-slider-runnable-track{
+  height: 4px;
+  background: linear-gradient(90deg, var(--steel-light), var(--steel));
+  border-radius: 2px;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  width: 16px; height: 16px;
+  margin-top: -6px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, var(--brass), var(--brass-dim));
+  border: 1px solid #6f542a;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  cursor: pointer;
+}
+input[type=range]::-moz-range-track{
+  height: 4px;
+  background: linear-gradient(90deg, var(--steel-light), var(--steel));
+  border-radius: 2px;
+}
+input[type=range]::-moz-range-thumb{
+  width: 16px; height: 16px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, var(--brass), var(--brass-dim));
+  border: 1px solid #6f542a;
+  cursor: pointer;
+}
+.dial-sub{
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  color: var(--dimmer);
+  margin-top: 4px;
+  text-transform: uppercase;
+}
+.dial-sub.warn{ color: var(--warn); }
+
+.fixed-note{
+  margin-top: 20px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--line);
+  font-size: 10.5px;
+  color: var(--dimmer);
+  letter-spacing: 0.05em;
+  line-height: 1.6;
+}
+.fixed-note b{ color: var(--dim); }
+
+/* ---------- Readout column (right) ---------- */
+.readout-grid{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.ro{
+  background: rgba(0,0,0,0.25);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 9px 10px;
+}
+.ro-label{ font-size: 9.5px; letter-spacing:0.1em; text-transform:uppercase; color: var(--dimmer); }
+.ro-val{ font-family:'Oswald',sans-serif; font-size: 18px; font-weight:600; color: var(--cream); margin-top:2px; }
+.ro-val.full{ grid-column: 1/-1; }
+
+.verdict{
+  border: 1px solid var(--brass-dim);
+  background: rgba(201,154,74,0.06);
+  border-radius: 4px;
+  padding: 12px 13px;
+  margin-bottom: 16px;
+  display:none;
+}
+.verdict.show{ display:block; animation: fadeIn .4s ease; }
+.verdict-score{
+  font-family:'Oswald',sans-serif;
+  font-size: 26px; font-weight:700; color: var(--brass);
+  display:flex; align-items:baseline; gap:6px;
+}
+.verdict-score span{ font-size:12px; color:var(--dimmer); font-family:'JetBrains Mono',monospace; font-weight:400;}
+.verdict-title{
+  font-size: 12px; letter-spacing:0.06em; text-transform:uppercase;
+  color: var(--cream); margin: 4px 0 6px; font-weight:700;
+}
+.verdict-notes{ font-size: 11.5px; color: var(--dim); line-height:1.6; }
+.verdict-flag{
+  display:inline-block; margin-top:8px; font-size:10px; letter-spacing:0.08em;
+  text-transform:uppercase; color: var(--bad); border:1px solid var(--bad);
+  padding: 2px 6px; border-radius: 3px;
+}
+
+@keyframes fadeIn{ from{opacity:0; transform: translateY(4px);} to{opacity:1; transform:none;} }
+
+/* Brew chart */
+.chart-wrap{ margin-bottom: 4px; }
+.chart-caption{ font-size: 9.5px; color: var(--dimmer); text-align:center; margin-top:4px; letter-spacing:0.05em; text-transform:uppercase;}
+
+/* Shot log */
+.log-panel{ margin-top: 22px; }
+.log-row{
+  display:grid;
+  grid-template-columns: 1fr auto auto auto;
+  gap: 8px;
+  font-size: 10.5px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  color: var(--dim);
+  align-items:center;
+}
+.log-row:last-child{ border-bottom:none; }
+.log-row b{ color: var(--cream); }
+.log-empty{ font-size: 11px; color: var(--dimmer); font-style: normal; }
+
+footer{
+  text-align:center;
+  margin-top: 40px;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--dimmer);
+  text-transform: uppercase;
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="brand">DIAL-IN <small>/ extraction console</small></div>
+    <div class="model-tag">Model <b>IN.01</b> — single group<br>SCA brewing control reference</div>
+  </header>
+
+  <div class="stage">
+
+    <!-- LEFT: controls -->
+    <section class="panel controls-col">
+      <p class="panel-label">Grinder &amp; shot parameters</p>
+
+      <div class="dial-group">
+        <div class="dial-head">
+          <span class="dial-name">Grind size</span>
+          <span class="dial-value" id="grindVal">5.0</span>
+        </div>
+        <input type="range" id="grindSlider" min="1" max="10" step="0.5" value="5">
+        <div class="dial-sub" id="grindLabel">Medium-fine — espresso</div>
+      </div>
+
+      <div class="dial-group">
+        <div class="dial-head">
+          <span class="dial-name">Yield</span>
+          <span class="dial-value" id="yieldVal">36<span> ml</span></span>
+        </div>
+        <input type="range" id="yieldSlider" min="15" max="60" step="1" value="36">
+        <div class="dial-sub" id="yieldLabel">Ratio 1 : 2.0</div>
+      </div>
+
+      <div class="dial-group">
+        <div class="dial-head">
+          <span class="dial-name">Shot time</span>
+          <span class="dial-value" id="timeVal">27<span> s</span></span>
+        </div>
+        <input type="range" id="timeSlider" min="10" max="50" step="1" value="27">
+        <div class="dial-sub" id="timeLabel">Within classic window</div>
+      </div>
+
+      <div class="fixed-note">
+        <b>Dose:</b> 18.0g fixed (standard double basket). Real machines don't let you set flow time directly — it falls out of grind, dose and pressure. Here you're testing whether your three numbers are physically consistent.
+        <br><br>
+        <b>Disclaimer:</b> This console is a theoretical framework. Actual extraction and cup profile will vary significantly depending on bean origin, roast level, freshness, and water chemistry.
+      </div>
+    </section>
+
+    <!-- CENTER: machine -->
+    <section class="panel machine-col">
+      <p class="panel-label" style="width:100%">Group head</p>
+      <div class="machine-svg-wrap" id="machineSvgWrap"></div>
+      <div class="status-line idle" id="statusLine">STANDBY — set your grind and pull</div>
+      <button class="pull-btn" id="pullBtn">Pull shot</button>
+    </section>
+
+    <!-- RIGHT: readouts -->
+    <section class="panel readout-col">
+      <p class="panel-label">Live readout</p>
+      <div class="readout-grid">
+        <div class="ro"><div class="ro-label">Flow rate</div><div class="ro-val" id="roFlow">—</div></div>
+        <div class="ro"><div class="ro-label">Brew ratio</div><div class="ro-val" id="roRatio">1:2.0</div></div>
+        <div class="ro"><div class="ro-label">Extraction (EY)</div><div class="ro-val" id="roEY">—</div></div>
+        <div class="ro"><div class="ro-label">Strength (TDS)</div><div class="ro-val" id="roTDS">—</div></div>
+      </div>
+
+      <div class="verdict" id="verdict">
+        <div class="verdict-score" id="verdictScore">0.0<span>/ 10</span></div>
+        <div class="verdict-title" id="verdictTitle">—</div>
+        <div class="verdict-notes" id="verdictNotes">—</div>
+        <div class="verdict-flag" id="verdictFlag" style="display:none;">Channeling detected</div>
+      </div>
+
+      <p class="panel-label">Brewing control chart</p>
+      <div class="chart-wrap" id="chartWrap"></div>
+      <div class="chart-caption">extraction yield × strength</div>
+
+      <div class="log-panel">
+        <p class="panel-label">Shot log</p>
+        <div id="logList"><div class="log-empty">No shots pulled yet.</div></div>
+      </div>
+    </section>
+
+  </div>
+
+  <footer>dial in the grind, pull, taste the numbers — repeat</footer>
+</div>
+
+<script>
+(function(){
+
+  // ---------------------------------------------------------
+  // STATE
+  // ---------------------------------------------------------
+  const DOSE = 18; // g, fixed double basket
+  let grind = 5, yieldMl = 36, timeS = 27;
+  let pulling = false;
+  const shotLog = []; // {grind, yieldMl, timeS, EY, TDS, score, channeling}
+
+  // ---------------------------------------------------------
+  // PHYSICS MODEL
+  // ---------------------------------------------------------
+  // Expected flow rate (ml/s) a given grind setting should produce at ~9 bar.
+  // grind 1 = finest (near turkish/espresso-fine) -> slow flow
+  // grind 10 = coarsest (near filter) -> fast flow
+  function expectedFlow(g){
+    return 0.35 + (g - 1) / 9 * 2.85;
+  }
+
+  function classifyGrind(g){
+    if(g < 2.5) return "Very fine — ristretto / choke risk";
+    if(g < 4)   return "Fine — espresso";
+    if(g < 6)   return "Medium-fine — espresso";
+    if(g < 7.5) return "Medium — verging coarse for espresso";
+    return "Coarse — channeling / under-extraction risk";
+  }
+
+  function pullPhysics(g, y, t){
+    const actualFlow = y / t;
+    const expFlow = expectedFlow(g);
+    const flowRatio = actualFlow / expFlow;
+
+    // channeling: water found a fast path through the puck, bypassing grounds
+    let channeling = false;
+    let channelPenalty = 0;
+    if(flowRatio > 1.55){
+      channeling = true;
+      channelPenalty = Math.min(9, (flowRatio - 1.55) * 7);
+    }
+
+    // finer grind = more surface area = more extraction
+    const fineFactor = (5.5 - g) / 4.5 * 2.4;
+    // more contact time = more extraction
+    const timeFactor = (t - 27) / 27 * 4.2;
+    // more water through the puck = marginally more total extraction
+    const yieldFactor = (y - 36) / 36 * 1.1;
+    // natural shot-to-shot variance, same as a real machine
+    const variance = (Math.random() - 0.5) * 1.1;
+
+    let EY = 20 + fineFactor + timeFactor + yieldFactor - channelPenalty + variance;
+    EY = Math.max(9, Math.min(29, EY));
+
+    const TDS = EY * DOSE / y; // percent, liquid mass ≈ yield in ml
+
+    return { actualFlow, expFlow, flowRatio, channeling, EY, TDS };
+  }
+
+  function zone(EY, TDS){
+    const ex = EY < 18 ? 0 : (EY <= 22 ? 1 : 2);   // 0 under, 1 ideal, 2 over
+    const st = TDS < 8 ? 0 : (TDS <= 12 ? 1 : 2);  // 0 weak, 1 ideal, 2 strong
+    const table = [
+      ["Weak & sour","Thin body, sharp acidity, underdeveloped — grind finer or extend time."],
+      ["Under-extracted","Sour, tangy, missing sweetness despite reasonable body — grind finer."],
+      ["Sour & harsh","Strong but under-extracted — acidic and unbalanced. Grind finer."],
+      ["Balanced, thin","Good extraction but watery — reduce yield or lower dose ratio."],
+      ["Sweet spot","Balanced, syrupy, full flavor with good sweetness. This is the target zone."],
+      ["Rich, heavy","Balanced extraction, intense body — a touch strong but well developed."],
+      ["Bitter & hollow","Over-extracted and weak — dry, papery finish. Grind coarser."],
+      ["Over-extracted","Bitter, harsh, dry — grind coarser or shorten the shot."],
+      ["Bitter & heavy","Astringent, burnt, overpowering — coarsen the grind and pull faster."]
+    ];
+    return table[ex*3 + st];
+  }
+
+  function scoreShot(EY, TDS, channeling, flowRatio){
+    // distance from the center of the ideal box (EY 20, TDS 10)
+    const dEY = (EY - 20) / 6;   // normalize roughly to box half-width
+    const dTDS = (TDS - 10) / 4;
+    let dist = Math.sqrt(dEY*dEY + dTDS*dTDS);
+    let score = 10 - dist * 6;
+    if(channeling) score -= Math.min(4, (flowRatio - 1.55) * 3);
+    return Math.max(0, Math.min(10, score));
+  }
+
+  // ---------------------------------------------------------
+  // MACHINE SVG
+  // ---------------------------------------------------------
+  const svgNS = "http://www.w3.org/2000/svg";
+  const wrap = document.getElementById('machineSvgWrap');
+  wrap.innerHTML = `
+  <svg viewBox="0 0 460 340" width="100%" style="display:block;overflow:visible;">
+    <defs>
+      <linearGradient id="bodyGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#3a3630"/>
+        <stop offset="100%" stop-color="#211e1a"/>
+      </linearGradient>
+      <linearGradient id="brassGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#e0b46a"/>
+        <stop offset="100%" stop-color="#9a7638"/>
+      </linearGradient>
+      <linearGradient id="liquidGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop id="liqStop1" offset="0%" stop-color="#7a4420"/>
+        <stop id="liqStop2" offset="100%" stop-color="#4a2712"/>
+      </linearGradient>
+      <radialGradient id="cremaGrad" cx="50%" cy="35%" r="70%">
+        <stop id="cremaStop1" offset="0%" stop-color="#d9ab5f"/>
+        <stop id="cremaStop2" offset="100%" stop-color="#b47f3a"/>
+      </radialGradient>
+    </defs>
+
+    <!-- GRINDER (left) -->
+    <g id="grinder" transform="translate(18,60)">
+      <polygon points="18,0 62,0 76,44 4,44" fill="url(#bodyGrad)" stroke="#4a453d" stroke-width="1.5"/>
+      <rect x="0" y="44" width="80" height="150" rx="6" fill="url(#bodyGrad)" stroke="#4a453d" stroke-width="1.5"/>
+      <circle cx="40" cy="130" r="30" fill="#161412" stroke="#4a453d" stroke-width="2"/>
+      <circle cx="40" cy="130" r="24" fill="none" stroke="#57524a" stroke-width="1"/>
+      <!-- tick marks -->
+      <g id="grindTicks" stroke="#6b6459" stroke-width="1.3"></g>
+      <g id="grindDial" transform="rotate(0 40 130)">
+        <rect x="37" y="108" width="6" height="22" rx="2" fill="url(#brassGrad)"/>
+        <circle cx="40" cy="130" r="5" fill="#c99a4a"/>
+      </g>
+      <rect x="14" y="172" width="52" height="10" rx="2" fill="#161412" stroke="#4a453d"/>
+      <text x="40" y="206" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#8a8378" letter-spacing="1">GRINDER</text>
+      <g id="grounds"></g>
+    </g>
+
+    <!-- MACHINE BODY (center-right) -->
+    <g transform="translate(130,20)">
+      <rect x="0" y="0" width="300" height="130" rx="8" fill="url(#bodyGrad)" stroke="#4a453d" stroke-width="1.5"/>
+      <rect x="10" y="10" width="280" height="4" rx="2" fill="#000" opacity="0.25"/>
+
+      <!-- gauges -->
+      <g transform="translate(60,66)">
+        <circle r="34" fill="#141210" stroke="#57524a" stroke-width="2"/>
+        <circle r="27" fill="none" stroke="#3a3630" stroke-width="1"/>
+        <g stroke="#6b6459" stroke-width="1">
+          <line x1="0" y1="-24" x2="0" y2="-19" transform="rotate(-90)"/>
+          <line x1="0" y1="-24" x2="0" y2="-19" transform="rotate(-45)"/>
+          <line x1="0" y1="-24" x2="0" y2="-19" transform="rotate(0)"/>
+          <line x1="0" y1="-24" x2="0" y2="-19" transform="rotate(45)"/>
+          <line x1="0" y1="-24" x2="0" y2="-19" transform="rotate(90)"/>
+          <line x1="0" y1="-24" x2="0" y2="-19" transform="rotate(135)"/>
+        </g>
+        <line id="gaugeNeedle" x1="0" y1="4" x2="0" y2="-20" stroke="#c1543a" stroke-width="2" transform="rotate(-90)"/>
+        <circle r="3.5" fill="#c99a4a"/>
+        <text y="46" text-anchor="middle" font-family="JetBrains Mono" font-size="7.5" fill="#8a8378" letter-spacing="1">BAR</text>
+      </g>
+
+      <g transform="translate(240,66)">
+        <circle r="34" fill="#141210" stroke="#57524a" stroke-width="2"/>
+        <circle r="27" fill="none" stroke="#3a3630" stroke-width="1"/>
+        <line id="tempNeedle" x1="0" y1="4" x2="0" y2="-20" stroke="#d8a13a" stroke-width="2" transform="rotate(-60)"/>
+        <circle r="3.5" fill="#c99a4a"/>
+        <text y="46" text-anchor="middle" font-family="JetBrains Mono" font-size="7.5" fill="#8a8378" letter-spacing="1">°C</text>
+      </g>
+
+      <!-- brand plate -->
+      <text x="150" y="28" text-anchor="middle" font-family="Oswald" font-size="12" font-weight="600" fill="#8a7a55" letter-spacing="3">IN.01</text>
+    </g>
+
+    <!-- GROUP HEAD + PORTAFILTER -->
+    <g transform="translate(240,150)">
+      <rect x="-30" y="0" width="60" height="26" rx="3" fill="url(#bodyGrad)" stroke="#4a453d" stroke-width="1.5"/>
+      <g id="portafilter" transform="translate(0,26)">
+        <path d="M -55 0 L 55 0 L 40 14 L -40 14 Z" fill="url(#brassGrad)" stroke="#6f542a" stroke-width="1"/>
+        <rect x="-14" y="10" width="28" height="10" fill="#3a3630"/>
+        <!-- spouts -->
+        <rect x="-9" y="18" width="4" height="14" fill="#2a2621"/>
+        <rect x="5" y="18" width="4" height="14" fill="#2a2621"/>
+        <!-- streams -->
+        <line id="stream1" x1="-7" y1="32" x2="-7" y2="32" stroke="#7a4420" stroke-width="3" stroke-linecap="round" opacity="0"/>
+        <line id="stream2" x1="7" y1="32" x2="7" y2="32" stroke="#7a4420" stroke-width="3" stroke-linecap="round" opacity="0"/>
+      </g>
+    </g>
+
+    <!-- CUP -->
+    <g transform="translate(240,236)">
+      <path d="M -30 0 L 30 0 L 24 46 L -24 46 Z" fill="#161412" stroke="#4a453d" stroke-width="1.5"/>
+      <clipPath id="cupClip"><path d="M -28 2 L 28 2 L 22.5 44 L -22.5 44 Z"/></clipPath>
+      <g clip-path="url(#cupClip)">
+        <rect id="liquidRect" x="-30" y="46" width="60" height="0" fill="url(#liquidGrad)"/>
+        <ellipse id="cremaEllipse" cx="0" cy="46" rx="26" ry="4" fill="url(#cremaGrad)" opacity="0"/>
+      </g>
+      <ellipse cx="0" cy="0" rx="30" ry="4.5" fill="none" stroke="#57524a" stroke-width="1.5"/>
+      <path d="M 24 8 q 16 4 2 22" fill="none" stroke="#4a453d" stroke-width="4"/>
+      <text x="0" y="66" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#8a8378" letter-spacing="1" id="cupTimer">0.0s</text>
+    </g>
+
+    <!-- STEAM WAND decorative -->
+    <g transform="translate(410,60)">
+      <path d="M 0 0 L 0 40 Q 0 50 10 54" fill="none" stroke="#57524a" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="0" cy="0" r="5" fill="url(#brassGrad)"/>
+    </g>
+  </svg>`;
+
+  // grind tick marks (11 ticks for 1..10 by .9 step visually)
+  const ticksG = document.getElementById('grindTicks');
+  for(let i=0;i<11;i++){
+    const ang = -140 + i*28;
+    const t = document.createElementNS(svgNS,'line');
+    t.setAttribute('x1','40'); t.setAttribute('y1','96');
+    t.setAttribute('x2','40'); t.setAttribute('y2','101');
+    t.setAttribute('transform', `rotate(${ang} 40 130)`);
+    ticksG.appendChild(t);
+  }
+
+  const grindDialEl = document.getElementById('grindDial');
+  const gaugeNeedle = document.getElementById('gaugeNeedle');
+  const tempNeedle = document.getElementById('tempNeedle');
+  const streamEls = [document.getElementById('stream1'), document.getElementById('stream2')];
+  const liquidRect = document.getElementById('liquidRect');
+  const cremaEllipse = document.getElementById('cremaEllipse');
+  const cupTimer = document.getElementById('cupTimer');
+  const groundsG = document.getElementById('grounds');
+
+  function setGrindDial(g){
+    const ang = -140 + (g-1)/9 * 280;
+    grindDialEl.setAttribute('transform', `rotate(${ang} 40 130)`);
+  }
+
+  // idle temp needle gentle sway
+  tempNeedle.setAttribute('transform','rotate(-60)');
+
+  // ---------------------------------------------------------
+  // BREW CONTROL CHART
+  // ---------------------------------------------------------
+  const chartWrap = document.getElementById('chartWrap');
+  chartWrap.innerHTML = `
+  <svg viewBox="0 0 260 190" width="100%" style="display:block;">
+    <defs>
+      <clipPath id="chartClip"><rect x="34" y="10" width="200" height="140"/></clipPath>
+    </defs>
+    <!-- ideal box: EY 18-22 -> x, TDS 8-12 -> y (inverted) -->
+    <rect id="idealBox" fill="rgba(201,154,74,0.10)" stroke="rgba(201,154,74,0.5)" stroke-width="1"/>
+    <g id="chartGrid" stroke="rgba(255,255,255,0.06)" stroke-width="1"></g>
+    <line x1="34" y1="10" x2="34" y2="150" stroke="#57524a" stroke-width="1"/>
+    <line x1="34" y1="150" x2="234" y2="150" stroke="#57524a" stroke-width="1"/>
+    <text x="134" y="178" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#8a8378" letter-spacing="0.5">EXTRACTION YIELD %</text>
+    <text x="12" y="80" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#8a8378" letter-spacing="0.5" transform="rotate(-90 12 80)">STRENGTH TDS %</text>
+    <g id="chartTicksX" font-family="JetBrains Mono" font-size="7" fill="#6b6459"></g>
+    <g id="chartTicksY" font-family="JetBrains Mono" font-size="7" fill="#6b6459"></g>
+    <g id="chartDots"></g>
+  </svg>`;
+
+  // chart domain
+  const CX0=34, CX1=234, CY0=10, CY1=150;
+  const EYmin=14, EYmax=26, TDSmin=6, TDSmax=14;
+  function chartX(EY){ return CX0 + (EY-EYmin)/(EYmax-EYmin) * (CX1-CX0); }
+  function chartY(TDS){ return CY1 - (TDS-TDSmin)/(TDSmax-TDSmin) * (CY1-CY0); }
+
+  document.getElementById('idealBox').setAttribute('x', chartX(18));
+  document.getElementById('idealBox').setAttribute('y', chartY(12));
+  document.getElementById('idealBox').setAttribute('width', chartX(22)-chartX(18));
+  document.getElementById('idealBox').setAttribute('height', chartY(8)-chartY(12));
+
+  const gridG = document.getElementById('chartGrid');
+  const txG = document.getElementById('chartTicksX');
+  const tyG = document.getElementById('chartTicksY');
+  [16,18,20,22,24].forEach(v=>{
+    const x = chartX(v);
+    const l = document.createElementNS(svgNS,'line');
+    l.setAttribute('x1',x); l.setAttribute('x2',x); l.setAttribute('y1',CY0); l.setAttribute('y2',CY1);
+    gridG.appendChild(l);
+    const t = document.createElementNS(svgNS,'text');
+    t.setAttribute('x',x); t.setAttribute('y',CY1+10); t.setAttribute('text-anchor','middle');
+    t.textContent = v; txG.appendChild(t);
+  });
+  [8,10,12].forEach(v=>{
+    const y = chartY(v);
+    const l = document.createElementNS(svgNS,'line');
+    l.setAttribute('x1',CX0); l.setAttribute('x2',CX1); l.setAttribute('y1',y); l.setAttribute('y2',y);
+    gridG.appendChild(l);
+    const t = document.createElementNS(svgNS,'text');
+    t.setAttribute('x',CX0-6); t.setAttribute('y',y+3); t.setAttribute('text-anchor','end');
+    t.textContent = v; tyG.appendChild(t);
+  });
+
+  const chartDots = document.getElementById('chartDots');
+  function plotDot(EY, TDS, current){
+    const cx = Math.max(CX0, Math.min(CX1, chartX(EY)));
+    const cy = Math.max(CY0, Math.min(CY1, chartY(TDS)));
+    if(!current){
+      chartDots.querySelectorAll('.cur').forEach(d=>d.classList.remove('cur'));
+      const prev = chartDots.querySelectorAll('circle');
+      prev.forEach(p=>p.setAttribute('opacity','0.28'));
+    }
+    const c = document.createElementNS(svgNS,'circle');
+    c.setAttribute('cx',cx); c.setAttribute('cy',cy); c.setAttribute('r', current?4.5:3);
+    c.setAttribute('fill', current ? '#e0b46a' : '#9a7638');
+    c.setAttribute('stroke', current ? '#1a1712':'none');
+    c.setAttribute('stroke-width', current?1:0);
+    if(current) c.classList.add('cur');
+    chartDots.appendChild(c);
+  }
+
+  // ---------------------------------------------------------
+  // CONTROLS WIRING
+  // ---------------------------------------------------------
+  const grindSlider = document.getElementById('grindSlider');
+  const yieldSlider = document.getElementById('yieldSlider');
+  const timeSlider = document.getElementById('timeSlider');
+  const grindVal = document.getElementById('grindVal');
+  const yieldVal = document.getElementById('yieldVal');
+  const timeVal = document.getElementById('timeVal');
+  const grindLabel = document.getElementById('grindLabel');
+  const yieldLabel = document.getElementById('yieldLabel');
+  const timeLabel = document.getElementById('timeLabel');
+  const roFlow = document.getElementById('roFlow');
+  const roRatio = document.getElementById('roRatio');
+
+  function refreshReadout(){
+    grind = parseFloat(grindSlider.value);
+    yieldMl = parseFloat(yieldSlider.value);
+    timeS = parseFloat(timeSlider.value);
+
+    grindVal.textContent = grind.toFixed(1);
+    yieldVal.innerHTML = yieldMl + '<span> ml</span>';
+    timeVal.innerHTML = timeS + '<span> s</span>';
+    grindLabel.textContent = classifyGrind(grind);
+
+    const ratio = yieldMl/DOSE;
+    roRatio.textContent = '1:' + ratio.toFixed(1);
+    yieldLabel.textContent = 'Ratio 1 : ' + ratio.toFixed(1);
+
+    const flow = yieldMl/timeS;
+    roFlow.textContent = flow.toFixed(2) + ' ml/s';
+
+    const exp = expectedFlow(grind);
+    if(flow > exp*1.55){
+      timeLabel.textContent = 'Flow too fast for this grind — channeling likely';
+      timeLabel.classList.add('warn');
+    } else if(flow < exp*0.4){
+      timeLabel.textContent = 'Flow very restricted — near-choke';
+      timeLabel.classList.add('warn');
+    } else {
+      timeLabel.textContent = 'Within plausible range for this grind';
+      timeLabel.classList.remove('warn');
+    }
+
+    setGrindDial(grind);
+  }
+  [grindSlider,yieldSlider,timeSlider].forEach(el=>el.addEventListener('input', refreshReadout));
+  refreshReadout();
+
+  // ---------------------------------------------------------
+  // PULL SEQUENCE
+  // ---------------------------------------------------------
+  const pullBtn = document.getElementById('pullBtn');
+  const statusLine = document.getElementById('statusLine');
+  const verdict = document.getElementById('verdict');
+  const verdictScore = document.getElementById('verdictScore');
+  const verdictTitle = document.getElementById('verdictTitle');
+  const verdictNotes = document.getElementById('verdictNotes');
+  const verdictFlag = document.getElementById('verdictFlag');
+  const roEY = document.getElementById('roEY');
+  const roTDS = document.getElementById('roTDS');
+  const logList = document.getElementById('logList');
+
+  function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+  function spawnGrounds(){
+    groundsG.innerHTML = '';
+    for(let i=0;i<10;i++){
+      const c = document.createElementNS(svgNS,'circle');
+      c.setAttribute('cx', 36+Math.random()*8);
+      c.setAttribute('cy', 200);
+      c.setAttribute('r', 1.2+Math.random());
+      c.setAttribute('fill', '#3c2a18');
+      c.style.animation = `fallGrounds ${0.5+Math.random()*0.4}s ease-in ${i*0.06}s forwards`;
+      groundsG.appendChild(c);
+    }
+  }
+
+  const styleEl = document.createElement('style');
+  styleEl.textContent = `
+    @keyframes fallGrounds{ from{ transform: translateY(0); opacity:1;} to{ transform: translateY(-14px); opacity:0;} }
+    #grindDial{ transition: transform 0.5s cubic-bezier(.4,0,.2,1); }
+    #portafilter{ transition: transform 0.35s ease; }
+    #gaugeNeedle, #tempNeedle{ transition: transform 0.4s ease; }
+  `;
+  document.head.appendChild(styleEl);
+
+  async function pullShot(){
+    if(pulling) return;
+    pulling = true;
+    pullBtn.disabled = true;
+    verdict.classList.remove('show');
+    verdictFlag.style.display = 'none';
+    liquidRect.setAttribute('height', 0);
+    liquidRect.setAttribute('y', 46);
+    cremaEllipse.setAttribute('opacity', 0);
+    streamEls.forEach(s=>{ s.setAttribute('opacity',0); s.setAttribute('y2', 32); });
+
+    // 1. grind
+    statusLine.textContent = 'GRINDING…';
+    statusLine.classList.remove('idle');
+    grindDialEl.style.transition = 'transform 0.15s linear';
+    for(let i=0;i<4;i++){
+      const jitter = (grind/10)*280 -140 + (Math.random()-0.5)*10;
+      grindDialEl.setAttribute('transform', `rotate(${jitter} 40 130)`);
+      spawnGrounds();
+      await sleep(160);
+    }
+    setGrindDial(grind);
+    grindDialEl.style.transition = 'transform 0.5s cubic-bezier(.4,0,.2,1)';
+    await sleep(250);
+
+    // 2. lock portafilter
+    statusLine.textContent = 'LOCKING PORTAFILTER…';
+    document.getElementById('portafilter').setAttribute('transform','translate(0,26) rotate(-14)');
+    await sleep(200);
+    document.getElementById('portafilter').setAttribute('transform','translate(0,26) rotate(0)');
+    await sleep(250);
+
+    // 3. compute physics
+    const res = pullPhysics(grind, yieldMl, timeS);
+
+    // 4. pull — animate over compressed real-time
+    statusLine.textContent = 'PULLING SHOT…';
+    const animDuration = Math.max(1800, Math.min(6000, timeS*180)); // ms
+    streamEls.forEach(s=>s.setAttribute('opacity',1));
+    gaugeNeedle.setAttribute('transform','rotate(70)');
+
+    const steps = 26;
+    for(let i=1;i<=steps;i++){
+      const frac = i/steps;
+      const displayedT = (frac*timeS).toFixed(1);
+      cupTimer.textContent = displayedT + 's';
+      const liqH = frac * 34;
+      liquidRect.setAttribute('height', liqH);
+      liquidRect.setAttribute('y', 46 - liqH);
+      streamEls.forEach(s=>s.setAttribute('y2', 32 + Math.min(4, liqH*0.1)));
+      const jNeedle = 70 + (Math.random()-0.5)*10;
+      gaugeNeedle.setAttribute('transform', `rotate(${jNeedle})`);
+      tempNeedle.setAttribute('transform', `rotate(${-60 + (Math.random()-0.5)*4})`);
+      await sleep(animDuration/steps);
+    }
+    gaugeNeedle.setAttribute('transform','rotate(-90)');
+    streamEls.forEach(s=>s.setAttribute('opacity',0));
+
+    // crema
+    const cremaColor1 = res.EY > 22 ? '#8a6a3a' : (res.EY < 18 ? '#e3c98f' : '#d9ab5f');
+    const cremaColor2 = res.EY > 22 ? '#5a4020' : (res.EY < 18 ? '#c9a862' : '#b47f3a');
+    document.getElementById('cremaStop1').setAttribute('stop-color', cremaColor1);
+    document.getElementById('cremaStop2').setAttribute('stop-color', cremaColor2);
+    cremaEllipse.setAttribute('cy', 46-34);
+    cremaEllipse.setAttribute('opacity', res.channeling ? 0.4 : 0.9);
+
+    const liqColor1 = res.EY > 22 ? '#3a2210' : (res.EY < 18 ? '#8a5228' : '#6a3818');
+    const liqColor2 = res.EY > 22 ? '#20130a' : (res.EY < 18 ? '#5a3418' : '#3a2010');
+    document.getElementById('liqStop1').setAttribute('stop-color', liqColor1);
+    document.getElementById('liqStop2').setAttribute('stop-color', liqColor2);
+
+    // 5. results
+    const score = scoreShot(res.EY, res.TDS, res.channeling, res.flowRatio);
+    const z = zone(res.EY, res.TDS);
+
+    roEY.textContent = res.EY.toFixed(1) + '%';
+    roTDS.textContent = res.TDS.toFixed(2) + '%';
+
+    verdictScore.innerHTML = score.toFixed(1) + '<span>/ 10</span>';
+    verdictTitle.textContent = z[0];
+    let notes = z[1];
+    if(res.channeling) notes += ' Water is rushing through a crack in the puck rather than the whole bed — the numbers look better than the cup will actually taste.';
+    verdictNotes.textContent = notes;
+    verdictFlag.style.display = res.channeling ? 'inline-block' : 'none';
+    verdict.classList.add('show');
+
+    statusLine.textContent = res.channeling ? 'SHOT PULLED — CHANNELING FLAGGED' : 'SHOT PULLED';
+
+    plotDot(res.EY, res.TDS, true);
+
+    shotLog.unshift({grind, yieldMl, timeS, EY:res.EY, TDS:res.TDS, score, channeling: res.channeling});
+    renderLog();
+
+    pulling = false;
+    pullBtn.disabled = false;
+  }
+
+  function renderLog(){
+    if(shotLog.length === 0){
+      logList.innerHTML = '<div class="log-empty">No shots pulled yet.</div>';
+      return;
+    }
+    logList.innerHTML = shotLog.slice(0,6).map(s=>`
+      <div class="log-row">
+        <span>G ${s.grind.toFixed(1)} · ${s.yieldMl}ml · ${s.timeS}s</span>
+        <span>EY <b>${s.EY.toFixed(1)}%</b></span>
+        <span>TDS <b>${s.TDS.toFixed(2)}%</b></span>
+        <span>${s.channeling ? '⚠' : ''}<b>${s.score.toFixed(1)}</b></span>
+      </div>
+    `).join('');
+  }
+
+  pullBtn.addEventListener('click', pullShot);
+
+})();
+</script>
+</body>
+</html>
