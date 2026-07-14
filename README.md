@@ -1,4 +1,4 @@
-☕**[DIAL-IN](https://dunkyoreo.github.io/dial-in/)**
+☕[**DIAL-IN**](https://dunkyoreo.github.io/dial-in/)
 
 An interactive reference for beginner home espresso enthusiasts learning how to dial in a shot, this console allows users to adjust three primary variables—grind size, liquid yield, and shot time—to visualize how they interact in a theoretical extraction. The application calculates flow rate, Extraction Yield (EY), and Total Dissolved Solids (TDS) in real-time, plotting the results on a standard brewing control chart. 
 
